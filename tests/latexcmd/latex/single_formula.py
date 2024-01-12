@@ -2,8 +2,8 @@ from pathlib import Path
 # noinspection PyUnresolvedReferences
 from typing import Union, Optional
 
-from latexcmd.latex.errors import ErrorCodes
-from latexcmd.latex.single_formula import analyze_tex_error, LatexError
+from latexcmd.latex.errors import ErrorCodes, LatexError
+from latexcmd.latex.single_formula import analyze_tex_error
 
 
 def test_analyze_tex_error():

@@ -24,7 +24,7 @@ def test_undefined_control_sequence():
         Fixture(i="frac", e=enquote("frac"), c="No backslash.")
     ]
 
-    handler = ErrorCodes.undefined_control_sequence.handler
+    handler = ErrorCodes.undefined_control_sequence.refine_text
 
     def run(fix: Fixture):
         _, added_info = handler(error_text, fix.i)

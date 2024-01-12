@@ -7,16 +7,15 @@ from pathlib import Path
 # noinspection PyUnresolvedReferences
 from typing import Union, Optional
 
-from latexcmd.latex.errors import ErrorCodes
+from latexcmd.latex.errors import ErrorCodes, LatexError
 
 
-class LatexError(Exception):
-    def __init__(self, text: str, code: "ErrorCodes"):
-        self.text = text
-        self.code = code
+def formula_to_dvi(formula: str, new_file: Path) -> None:
+    """
 
-
-def formula_to_dvi(formula):
+    :param formula: The formula to be rendered.
+    :param new_file: The file which to save the DVI into.
+    """
     content = rf"""\documentclass{{standalone}}\begin{{document}}${formula}$\end{{document}}"""
     with tempfile.TemporaryDirectory() as temp:
         temp_dir = Path(temp)
@@ -39,9 +38,20 @@ def formula_to_dvi(formula):
         if code.returncode != 0:
             log = temp_file.with_suffix(".log")
             analyze_tex_error(log)
+            return
+
+        shutil.copy(temp_file.with_suffix(".dvi"), new_file)
+
 
 
 def analyze_tex_error(log: Path):
+    """Analyzes the first occurred error during parsing by examining the log.
+    Will always raise a `LatexError`, even if no specific could be found.
+
+    Accordingly, this function should only be used if the return code of the latex-parser suggests an issue.
+
+    :raises LatexError:
+    """
     with log.open() as stream:
         error_text = None
         added_info = None
@@ -55,6 +65,12 @@ def analyze_tex_error(log: Path):
 
 
 def raise_tex_error(error_text: Optional[str], added_info: Optional[str]):
+    """Based on the description and additional info provided by skimming the log of the latex parser, raises an error with an adequate description.
+    See `ErrorCodes` for details on distinctions.
+    If no specific error could be determined from the arguments, an "Unknown Error"-error will be raised.
+
+    :raises LatexError:
+    """
     logging.error("LaTeX parsing encountered an error: \"%s\": \"%s\"", error_text.strip(), added_info.strip())
     code = ErrorCodes.unknown
     if error_text is not None:
@@ -64,7 +80,7 @@ def raise_tex_error(error_text: Optional[str], added_info: Optional[str]):
         for local_code in codes:
             if local_code.value in error_text:
                 code = local_code
-                error_text, added_info = local_code.handler(error_text, added_info)
+                error_text, added_info = local_code.refine_text(error_text, added_info)
                 break
     if code == ErrorCodes.unknown:
         if error_text is None:
@@ -81,9 +97,5 @@ def raise_tex_error(error_text: Optional[str], added_info: Optional[str]):
 
 
 if __name__ == '__main__':
-    try:
-        formula_to_dvi(r"E = \frac{1}{2} mv^2")
-    except LatexError as err:
-        print("Text:")
-        print(err.text)
-        print(err.code)
+    formula_to_dvi(r"E = \frac{1}{2} mv^2", Path("hey.dvi"))
+
